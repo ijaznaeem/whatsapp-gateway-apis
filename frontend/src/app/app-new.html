@@ -1,0 +1,222 @@
+<div class="app-container">
+  <!-- Header -->
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>whatsapp</mat-icon>
+        {{ title }}
+      </mat-card-title>
+      <mat-card-subtitle>
+        Manage WhatsApp devices and send messages
+      </mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <!-- Main Content -->
+  <div class="content-container">
+    <mat-tab-group>
+      <!-- Device Management Tab -->
+      <mat-tab label="Device Management">
+        <div class="tab-content">
+          <!-- Add New Device -->
+          <mat-card class="form-card">
+            <mat-card-header>
+              <mat-card-title>Add New Device</mat-card-title>
+              <mat-card-subtitle>Start a new WhatsApp device session</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <form [formGroup]="deviceForm" (ngSubmit)="startDevice()">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Device ID</mat-label>
+                  <input matInput formControlName="deviceId" placeholder="e.g., device1, phone-01">
+                  <mat-icon matSuffix>devices</mat-icon>
+                  <mat-error *ngIf="deviceForm.get('deviceId')?.hasError('required')">
+                    Device ID is required
+                  </mat-error>
+                  <mat-error *ngIf="deviceForm.get('deviceId')?.hasError('pattern')">
+                    Device ID can only contain letters, numbers, dashes and underscores
+                  </mat-error>
+                </mat-form-field>
+
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="submit"
+                          [disabled]="deviceForm.invalid || isLoading()">
+                    <mat-icon>add</mat-icon>
+                    @if (isLoading()) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                    } @else {
+                      Start Device
+                    }
+                  </button>
+                </div>
+              </form>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Active Devices List -->
+          <mat-card class="devices-card">
+            <mat-card-header>
+              <mat-card-title>Active Devices ({{ devices().length }})</mat-card-title>
+              <mat-card-subtitle>Manage your WhatsApp device sessions</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              @if (devices().length === 0) {
+                <div class="no-devices">
+                  <mat-icon>devices_other</mat-icon>
+                  <p>No devices added yet. Start by adding a new device above.</p>
+                </div>
+              } @else {
+                <div class="devices-grid">
+                  @for (device of devices(); track device.id) {
+                    <mat-card class="device-card">
+                      <mat-card-header>
+                        <mat-card-title>{{ device.id }}</mat-card-title>
+                        <mat-card-subtitle>
+                          <mat-chip [color]="getDeviceStatusColor(device.status)">
+                            <mat-icon>{{ getDeviceStatusIcon(device.status) }}</mat-icon>
+                            {{ device.status | titlecase }}
+                          </mat-chip>
+                        </mat-card-subtitle>
+                      </mat-card-header>
+                      <mat-card-actions>
+                        <button mat-button color="warn" (click)="removeDevice(device.id)">
+                          <mat-icon>delete</mat-icon>
+                          Remove
+                        </button>
+                      </mat-card-actions>
+                    </mat-card>
+                  }
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <!-- Send Messages Tab -->
+      <mat-tab label="Send Messages">
+        <div class="tab-content">
+          <mat-card class="form-card">
+            <mat-card-header>
+              <mat-card-title>Send WhatsApp Message</mat-card-title>
+              <mat-card-subtitle>Send text messages through your connected devices</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              @if (getAvailableDevices().length === 0) {
+                <div class="no-devices">
+                  <mat-icon>warning</mat-icon>
+                  <p>No connected devices available. Please start a device first.</p>
+                </div>
+              } @else {
+                <form [formGroup]="messageForm" (ngSubmit)="sendMessage()">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Select Device</mat-label>
+                    <mat-select formControlName="deviceId">
+                      @for (device of getAvailableDevices(); track device.id) {
+                        <mat-option [value]="device.id">
+                          {{ device.id }} ({{ device.status | titlecase }})
+                        </mat-option>
+                      }
+                    </mat-select>
+                    <mat-icon matSuffix>devices</mat-icon>
+                    <mat-error *ngIf="messageForm.get('deviceId')?.hasError('required')">
+                      Please select a device
+                    </mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Phone Number</mat-label>
+                    <input matInput formControlName="phoneNumber"
+                           placeholder="e.g., +1234567890">
+                    <mat-icon matSuffix>phone</mat-icon>
+                    <mat-hint>Include country code (e.g., +1 for US)</mat-hint>
+                    <mat-error *ngIf="messageForm.get('phoneNumber')?.hasError('required')">
+                      Phone number is required
+                    </mat-error>
+                    <mat-error *ngIf="messageForm.get('phoneNumber')?.hasError('pattern')">
+                      Please enter a valid phone number with country code
+                    </mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Message</mat-label>
+                    <textarea matInput formControlName="message"
+                              placeholder="Enter your message here..."
+                              rows="4"></textarea>
+                    <mat-icon matSuffix>message</mat-icon>
+                    <mat-error *ngIf="messageForm.get('message')?.hasError('required')">
+                      Message is required
+                    </mat-error>
+                    <mat-error *ngIf="messageForm.get('message')?.hasError('minlength')">
+                      Message cannot be empty
+                    </mat-error>
+                  </mat-form-field>
+
+                  <div class="form-actions">
+                    <button mat-raised-button color="primary" type="submit"
+                            [disabled]="messageForm.invalid || isLoading()">
+                      <mat-icon>send</mat-icon>
+                      @if (isLoading()) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        Send Message
+                      }
+                    </button>
+                  </div>
+                </form>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <!-- API Documentation Tab -->
+      <mat-tab label="API Documentation">
+        <div class="tab-content">
+          <mat-card class="docs-card">
+            <mat-card-header>
+              <mat-card-title>API Endpoints</mat-card-title>
+              <mat-card-subtitle>Available WhatsApp API endpoints</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="api-endpoint">
+                <h3>Start Device Session</h3>
+                <code>POST /api/devices/:id/start</code>
+                <p>Start a new WhatsApp device session. This will generate a QR code that needs to be scanned.</p>
+              </div>
+
+              <div class="api-endpoint">
+                <h3>Get All Devices</h3>
+                <code>GET /api/devices</code>
+                <p>Enumerate all registered devices with their current status, QR codes, and last update times.</p>
+              </div>
+
+              <div class="api-endpoint">
+                <h3>Get Device Status</h3>
+                <code>GET /api/devices/:id/status</code>
+                <p>Get the current status of a specific device including connection state and QR code if available.</p>
+              </div>
+
+              <div class="api-endpoint">
+                <h3>Remove Device</h3>
+                <code>DELETE /api/devices/:id</code>
+                <p>Remove a device session and clean up associated resources.</p>
+              </div>
+
+              <div class="api-endpoint">
+                <h3>Send Message</h3>
+                <code>POST /api/devices/:id/send</code>
+                <p>Send a text message through the specified device.</p>
+                <strong>Body:</strong>
+                <pre>{
+  "to": "1234567890&#64;s.whatsapp.net",
+  "message": "Hello, World!"
+}</pre>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+</div>
