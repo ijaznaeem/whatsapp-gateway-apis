@@ -55,3 +55,23 @@ coverage/
 *.pid
 *.seed
 *.pid.lock
+
+# Archives and compressed files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Troubleshooting and documentation notes
+ISSUE_SUMMARY.md
+TROUBLESHOOTING_REPORT.md
+QR_CODE_FIX_SUMMARY.md
+MIGRATION_TO_WHATSAPP_WEB_JS.md
+
+# Test scripts
+test_*.js
+*_test.js
+ssl_test.js
+test_connection.js
+diagnose.sh
